@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบคำนวณตารางชั่วโมงเวร (1 วัน 2 ช่องเวร)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    body { font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    
+    @media print {
+      body { background: white !important; padding: 0 !important; }
+      .no-print { display: none !important; }
+      .print-shadow-none { box-shadow: none !important; border-color: #cbd5e1 !important; }
+      .page-break { page-break-before: always; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased p-2.5 sm:p-4 md:p-6 min-h-screen">
+
+  <div class="max-w-7xl mx-auto space-y-4 md:space-y-5">
+
+    <!-- Header & Action Bar -->
+    <header class="bg-white border border-slate-200 rounded-2xl p-4 md:p-5 shadow-sm print-shadow-none">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        
+        <!-- App Title & Description -->
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-2xl shadow-md shadow-blue-500/20 shrink-0">
+            🕒
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <h1 class="text-base sm:text-lg md:text-xl font-bold text-slate-900">
+                โปรแกรมคำนวณชั่วโมงเวร & ค่าตอบแทน
+              </h1>
+              <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                บันทึกอัตโนมัติในเครื่อง
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">
+              1 วัน 2 ช่องเวร • เวรเช้า (ช่อง 1) • เวรบ่าย/ดึก (ช่อง 2) • พร้อมคำนวณ OT & กะเกินวันหยุดอัตโนมัติ
+            </p>
+          </div>
+        </div>
+
+        <!-- Toolbar Controls -->
+        <div class="flex flex-wrap items-center gap-2 no-print">
+          
+          <!-- Month/Year Selector -->
+          <div class="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-xl border border-slate-200 text-xs">
+            <label for="monthSelect" class="font-semibold text-slate-600 pl-1">เดือน:</label>
+            <select id="monthSelect" class="bg-white border border-slate-300 rounded-lg px-2 py-1 font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="0">มกราคม</option>
+              <option value="1">กุมภาพันธ์</option>
+              <option value="2">มีนาคม</option>
+              <option value="3">เมษายน</option>
+              <option value="4">พฤษภาคม</option>
+              <option value="5">มิถุนายน</option>
+              <option value="6">กรกฎาคม</option>
+              <option value="7">สิงหาคม</option>
+              <option value="8">กันยายน</option>
+              <option value="9">ตุลาคม</option>
+              <option value="10">พฤศจิกายน</option>
+              <option value="11">ธันวาคม</option>
+            </select>
+
+            <label for="yearSelect" class="font-semibold text-slate-600">ปี:</label>
+            <select id="yearSelect" class="bg-white border border-slate-300 rounded-lg px-2 py-1 font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"></select>
+          </div>
+
+          <!-- Rate Settings Modal Button -->
+          <button id="btnOpenRatesModal" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 shadow-2xs transition" title="ตั้งค่าอัตราเงินค่าเวร & OT">
+            ⚙️ อัตราเงิน
+          </button>
+
+          <!-- Print / PDF Button -->
+          <button onclick="window.print()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-900 text-white shadow-xs transition active:scale-95">
+            🖨️ พิมพ์ / PDF
+          </button>
+
+          <!-- Backup Dropdown / More -->
+          <div class="relative inline-block text-left" id="backupDropdownContainer">
+            <button id="btnToggleBackupMenu" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition shadow-2xs">
+              💾 สำรอง/กู้คืน ▾
+            </button>
+            <div id="backupMenu" class="hidden absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1 text-xs">
+              <button id="btnExportJson" class="w-full text-left px-3 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                <span>📤</span> ส่งออกไฟล์สำรอง (JSON)
+              </button>
+              <button id="btnImportJson" class="w-full text-left px-3 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                <span>📥</span> นำเข้าไฟล์สำรอง (JSON)
+              </button>
+              <div class="border-t border-slate-100 my-1"></div>
+              <button id="btnExportCsv" class="w-full text-left px-3 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                <span>📊</span> ส่งออกเป็น Excel (CSV)
+              </button>
+              <button id="btnImportCsv" class="w-full text-left px-3 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                <span>📑</span> นำเข้าข้อมูลจาก CSV
+              </button>
+            </div>
+            <!-- Hidden File Inputs -->
+            <input type="file" id="jsonFileInput" accept=".json" class="hidden">
+            <input type="file" id="csvFileInput" accept=".csv, .txt" class="hidden">
+          </div>
+
+        </div>
+      </div>
+    </header>
+
+    <!-- Key Metrics Cards -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
+      <!-- 1. Total Month Hours -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-4 shadow-2xs flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl font-bold shrink-0">⏱️</div>
+        <div class="min-w-0">
+          <div class="text-[11px] text-slate-500 font-medium truncate">รวมชั่วโมงทั้งเดือน</div>
+          <div id="statTotalHours" class="text-xl sm:text-2xl font-black text-blue-600">0.0 ชม.</div>
+          <div class="text-[10px] text-slate-400">ทุกเวรที่ปฏิบัติงาน</div>
+        </div>
+      </div>
+
+      <!-- 2. Combined Holiday Morning Shift -->
+      <div class="bg-rose-50/90 border-2 border-rose-300 rounded-2xl p-3.5 sm:p-4 shadow-2xs flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center text-xl font-bold shadow-xs shrink-0">🚩</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-[11px] text-rose-900 font-bold truncate">เวรเช้าวันหยุด (ส.-อา.+นักขัตฯ)</div>
+          <div id="statHolidayMorningHours" class="text-xl sm:text-2xl font-black text-rose-700">0.0 ชม.</div>
+          <div class="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px]">
+            <span id="badgeWeekendHours" class="inline-flex items-center px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 font-bold">ส.-อา.: 0 ชม.</span>
+            <span id="badgeHolidayHours" class="inline-flex items-center px-1.5 py-0.2 rounded bg-rose-200 text-rose-800 font-bold">นักขัตฯ: 0 ชม.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Slot 2 Hours (เวรบ่าย + เวรดึก ช่อง 2 ทั้งหมด) -->
+      <div class="bg-purple-50/80 border-2 border-purple-300 rounded-2xl p-3.5 sm:p-4 shadow-2xs flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center text-xl font-bold shadow-xs shrink-0">🌙</div>
+        <div class="min-w-0">
+          <div class="text-[11px] text-purple-900 font-bold truncate">รวมเวรบ่าย + ดึก (ช่อง 2)</div>
+          <div id="statSlot2Hours" class="text-xl sm:text-2xl font-black text-purple-700">0.0 ชม.</div>
+          <div class="text-[10px] text-purple-600 font-medium">* ชั่วโมงที่นับจากช่อง 2</div>
+        </div>
+      </div>
+
+      <!-- 4. Regular Weekday Morning Hours -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-4 shadow-2xs flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl font-bold shrink-0">🏢</div>
+        <div class="min-w-0">
+          <div class="text-[11px] text-slate-500 font-medium truncate">เวรเช้าวันธรรมดา (จ.-ศ.)</div>
+          <div id="statWeekdayMorningHours" class="text-xl sm:text-2xl font-black text-emerald-600">0.0 ชม.</div>
+          <div class="text-[10px] text-slate-400">เวลาราชการปกติ (ช่อง 1)</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Specific Afternoon Breakdown Cards (นับจากช่อง 2) -->
+    <section class="bg-amber-50/60 border border-amber-200 rounded-2xl p-3.5 shadow-2xs space-y-2">
+      <div class="flex items-center justify-between text-xs">
+        <span class="font-bold text-amber-900 flex items-center gap-1.5">
+          <span>🎯</span> สรุปชั่วโมงเวรบ่ายแต่ละช่วง & เวรดึก (จากช่อง 2)
+        </span>
+        <span class="text-[11px] text-slate-500">
+          วันหยุดนักขัตฤกษ์ที่เลือก: <strong id="statHolidayCount" class="text-rose-600 font-bold">0</strong> วัน
+        </span>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <div class="bg-white border border-amber-200 rounded-xl p-2.5 text-center shadow-2xs">
+          <div class="text-[11px] text-slate-500 font-medium">บ่าย 4 ชั่วโมง (บ4)</div>
+          <div id="hoursB4" class="text-lg font-black text-amber-600">0 ชม.</div>
+          <div id="countB4" class="text-[10px] text-slate-400 font-medium">0 เวร</div>
+        </div>
+        <div class="bg-white border border-amber-200 rounded-xl p-2.5 text-center shadow-2xs">
+          <div class="text-[11px] text-slate-500 font-medium">บ่าย 5 ชั่วโมง (บ5)</div>
+          <div id="hoursB5" class="text-lg font-black text-amber-600">0 ชม.</div>
+          <div id="countB5" class="text-[10px] text-slate-400 font-medium">0 เวร</div>
+        </div>
+        <div class="bg-white border border-amber-200 rounded-xl p-2.5 text-center shadow-2xs">
+          <div class="text-[11px] text-slate-500 font-medium">บ่าย 6 ชั่วโมง (บ6)</div>
+          <div id="hoursB6" class="text-lg font-black text-amber-600">0 ชม.</div>
+          <div id="countB6" class="text-[10px] text-slate-400 font-medium">0 เวร</div>
+        </div>
+        <div class="bg-white border border-amber-200 rounded-xl p-2.5 text-center shadow-2xs">
+          <div class="text-[11px] text-slate-500 font-medium">บ่าย 7 ชั่วโมง (บ7)</div>
+          <div id="hoursB7" class="text-lg font-black text-amber-600">0 ชม.</div>
+          <div id="countB7" class="text-[10px] text-slate-400 font-medium">0 เวร</div>
+        </div>
+        <div class="bg-white border border-purple-200 rounded-xl p-2.5 text-center shadow-2xs">
+          <div class="text-[11px] text-slate-500 font-medium">เวรดึก (ด / 8 ชม.)</div>
+          <div id="hoursNight" class="text-lg font-black text-purple-600">0 ชม.</div>
+          <div id="countNight" class="text-[10px] text-slate-400 font-medium">0 เวร</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Public Holiday Input Bar -->
+    <section class="bg-gradient-to-r from-rose-50 to-amber-50 border border-rose-200/90 rounded-2xl p-3.5 shadow-2xs">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div class="flex items-start md:items-center gap-2.5">
+          <span class="text-2xl p-1.5 bg-white rounded-xl shadow-2xs border border-rose-200">🚩</span>
+          <div>
+            <h3 class="text-xs md:text-sm font-bold text-rose-950 flex items-center gap-2">
+              ระบุวันหยุดนักขัตฤกษ์ประจำเดือน
+              <span class="text-[10px] font-semibold text-rose-700 bg-rose-100/90 px-2 py-0.5 rounded-full">นับชั่วโมงเฉพาะเวรเช้า (ช่อง 1)</span>
+            </h3>
+            <p class="text-[11px] text-slate-600">
+              กรอกเฉพาะตัวเลขวันที่ คั่นด้วยจุลภาค <code>,</code> เช่น <span class="font-bold text-rose-700">5, 10, 23</span> หรือคลิกไอคอนธงในปฏิทินโดยตรง
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 self-end md:self-center w-full md:w-auto no-print">
+          <div class="relative flex-1 md:w-56">
+            <input type="text" id="holidayDateInput" placeholder="เช่น 5, 10, 23" 
+              class="w-full px-3 py-1.5 text-xs rounded-xl border border-rose-300 bg-white font-medium text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-rose-500 focus:outline-none shadow-2xs">
+          </div>
+          <button id="btnApplyHolidays" class="whitespace-nowrap px-3.5 py-1.5 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-2xs transition active:scale-95">
+            บันทึกวันหยุด
+          </button>
+          <button id="btnClearHolidays" class="whitespace-nowrap px-2.5 py-1.5 text-xs font-medium rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-100/50 transition">
+            ล้าง
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Holiday Tags Container -->
+      <div id="holidayTagsContainer" class="mt-2.5 pt-2 border-t border-rose-200/60 flex flex-wrap items-center gap-1.5 text-xs">
+        <span class="text-[11px] text-slate-500 font-medium">วันหยุดนักขัตฤกษ์ที่เลือก:</span>
+        <span id="noHolidaysText" class="text-[11px] text-slate-400 italic">ยังไม่ได้ระบุวันหยุด</span>
+      </div>
+    </section>
+
+    <!-- Calendar 2 Slots Per Day -->
+    <section class="bg-white border border-slate-200 rounded-2xl p-4 md:p-5 shadow-sm print-shadow-none space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+        <div>
+          <h2 class="text-sm md:text-base font-bold text-slate-900 flex items-center gap-2">
+            📝 บันทึกตารางเวรประจำเดือน (<span id="monthYearTitle" class="text-blue-600 font-black"></span>)
+          </h2>
+          <p class="text-xs text-slate-500">
+            * <strong>ช่อง 1 (เวรเช้า):</strong> วันหยุดนักขัตฯ นับชั่วโมงที่ช่องนี้ | <strong>ช่อง 2 (เวรบ่าย/ดึก):</strong> นับชั่วโมงบ่ายและดึกที่ช่องนี้
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2 no-print">
+          <button id="btnTogglePaste" class="px-3 py-1.5 text-xs font-medium rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition">
+            📋 วางข้อมูลด่วน (Paste)
+          </button>
+          <button id="btnClearMonth" class="px-2.5 py-1.5 text-xs font-medium rounded-xl bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 transition">
+            ล้างเวรเดือนนี้
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Shift Palette with Slot Target Selector -->
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs no-print">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-slate-700">เป้าหมายที่จะใส่เวร:</span>
+          <div class="inline-flex rounded-lg border border-slate-300 p-0.5 bg-white text-xs shadow-2xs">
+            <button id="btnTargetSlot1" class="px-2.5 py-1 rounded-md bg-blue-600 text-white font-bold shadow-2xs transition">
+              ช่อง 1 (เวรเช้า)
+            </button>
+            <button id="btnTargetSlot2" class="px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 font-medium transition">
+              ช่อง 2 (เวรบ่าย/ดึก)
+            </button>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-1.5">
+          <span class="font-semibold text-slate-500">เลือกเวร:</span>
+          <div id="paletteContainer" class="flex flex-wrap items-center gap-1.5"></div>
+        </div>
+      </div>
+
+      <!-- Quick Paste Drawer -->
+      <div id="pasteDrawer" class="hidden bg-blue-50/80 border border-blue-200 rounded-xl p-4 space-y-2 no-print">
+        <div class="flex items-center justify-between text-xs font-bold text-blue-900">
+          <span>📋 วางตารางเวร 2 ช่องต่อวันในครั้งเดียว (ก๊อปปี้จาก Excel / LINE ได้ทันที)</span>
+          <button id="btnClosePaste" class="text-slate-400 hover:text-slate-600 font-bold">✕ ปิด</button>
+        </div>
+        <p class="text-xs text-slate-600">
+          พิมพ์หรือก๊อปปี้มาวางได้ เช่น <code>ช บ4, ช บ5, O บ6, ด O</code> (คั่นด้วยจุลภาคหรือขึ้นบรรทัดใหม่)
+        </p>
+        <textarea id="pasteTextarea" rows="3" class="w-full text-xs font-mono p-2.5 rounded-lg border border-slate-300 bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none" placeholder="ช บ4, ช บ5, ช บ6, O บ7, ด O ..."></textarea>
+        <div class="flex justify-end gap-2">
+          <button id="btnApplyPaste" class="px-4 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-2xs">
+            นำเข้าลงตารางทันที
+          </button>
+        </div>
+      </div>
+
+      <!-- Calendar Grid View with Weekend & Holiday Styling -->
+      <div>
+        <div class="grid grid-cols-7 gap-1 md:gap-1.5 text-center text-xs font-bold text-slate-500 mb-1">
+          <div class="py-1 bg-rose-100 text-rose-700 rounded-lg font-black">อาทิตย์</div>
+          <div class="py-1 bg-slate-100 text-slate-700 rounded-lg">จันทร์</div>
+          <div class="py-1 bg-slate-100 text-slate-700 rounded-lg">อังคาร</div>
+          <div class="py-1 bg-slate-100 text-slate-700 rounded-lg">พุธ</div>
+          <div class="py-1 bg-slate-100 text-slate-700 rounded-lg">พฤหัสฯ</div>
+          <div class="py-1 bg-slate-100 text-slate-700 rounded-lg">ศุกร์</div>
+          <div class="py-1 bg-indigo-100 text-indigo-700 rounded-lg font-black">เสาร์</div>
+        </div>
+        <div id="calendarGrid" class="grid grid-cols-7 gap-1 md:gap-1.5"></div>
+      </div>
+    </section>
+
+    <!-- Payroll & Shift Allowance Calculator Section -->
+    <section class="bg-gradient-to-br from-emerald-50 via-teal-50 to-white border-2 border-emerald-300 rounded-2xl p-4 md:p-5 shadow-sm print-shadow-none space-y-4">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-emerald-200">
+        <div>
+          <h2 class="text-sm md:text-base font-bold text-emerald-950 flex items-center gap-2">
+            <span>💰</span> คำนวณเงินค่าเวร & ค่าล่วงเวลา (OT / กะเกิน)
+          </h2>
+          <p class="text-xs text-emerald-700">
+            คำนวณอัตโนมัติตามเกณฑ์: OT (<span id="rateLabelOt">175</span> บ./ชม.) • กะเวรวันหยุด (<span id="rateLabelHol">250</span> บ./8 ชม.) • กะเวรบ่ายดึก (<span id="rateLabelSlot2">300</span> บ./8 ชม.)
+          </p>
+        </div>
+
+        <!-- Input for Official Working Hours -->
+        <div class="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-emerald-300 shadow-2xs">
+          <label for="officialWorkingHoursInput" class="text-xs font-bold text-slate-700 whitespace-nowrap">
+            เวลาทำการปกติ:
+          </label>
+          <div class="relative w-20">
+            <input type="number" id="officialWorkingHoursInput" value="160" min="0" step="1"
+              class="w-full px-2 py-1 text-xs text-center font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+          <span class="text-xs text-slate-500 font-medium">ชม.</span>
+          <button id="btnAutoCalcWorkingHours" title="คำนวณจากวันทำการ จ.-ศ. ปกติ (หักวันหยุดนักขัตฯ)" class="no-print px-2 py-1 text-[11px] font-semibold bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-md transition whitespace-nowrap">
+            อัตโนมัติ
+          </button>
+        </div>
+      </div>
+
+      <!-- Money Breakdown Cards Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+        <!-- 1. OT Hours & Pay -->
+        <div class="bg-white border border-emerald-200 rounded-xl p-3.5 space-y-1.5 shadow-2xs">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-700 flex items-center gap-1">⏱️ ชั่วโมง OT</span>
+            <span class="text-[10px] text-slate-400">× <span class="rateValOt">175</span> บ./ชม.</span>
+          </div>
+          <div class="flex items-baseline justify-between">
+            <span id="statOtHours" class="text-xl font-black text-blue-600">0.0 ชม.</span>
+            <span class="text-[10px] text-slate-500 font-mono">(เวรรวม - เวลาทำการ)</span>
+          </div>
+          <div class="pt-1.5 border-t border-slate-100 flex items-center justify-between">
+            <span class="text-slate-500 font-medium">เงินค่า OT:</span>
+            <span id="statOtPay" class="font-black text-blue-700 text-sm">0.00 บาท</span>
+          </div>
+        </div>
+
+        <!-- 2. Holiday Morning Pay -->
+        <div class="bg-white border border-rose-200 rounded-xl p-3.5 space-y-1.5 shadow-2xs">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-rose-900 flex items-center gap-1">🚩 เวรเช้าวันหยุด</span>
+            <span class="text-[10px] text-rose-500">÷ 8 × <span class="rateValHol">250</span> บ.</span>
+          </div>
+          <div class="flex items-baseline justify-between">
+            <span id="statHolidayMorningPayHours" class="text-xl font-black text-rose-600">0.0 ชม.</span>
+            <span id="statHolidayMorningPayShifts" class="text-[10px] text-slate-500 font-medium">0.0 กะ</span>
+          </div>
+          <div class="pt-1.5 border-t border-slate-100 flex items-center justify-between">
+            <span class="text-slate-500 font-medium">เงินเวรวันหยุด:</span>
+            <span id="statHolidayPay" class="font-black text-rose-700 text-sm">0.00 บาท</span>
+          </div>
+        </div>
+
+        <!-- 3. Afternoon / Night Pay -->
+        <div class="bg-white border border-purple-200 rounded-xl p-3.5 space-y-1.5 shadow-2xs">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-purple-900 flex items-center gap-1">🌙 เวรบ่าย/ดึก (ช่อง 2)</span>
+            <span class="text-[10px] text-purple-500">÷ 8 × <span class="rateValSlot2">300</span> บ.</span>
+          </div>
+          <div class="flex items-baseline justify-between">
+            <span id="statSlot2PayHours" class="text-xl font-black text-purple-600">0.0 ชม.</span>
+            <span id="statSlot2PayShifts" class="text-[10px] text-slate-500 font-medium">0.0 กะ</span>
+          </div>
+          <div class="pt-1.5 border-t border-slate-100 flex items-center justify-between">
+            <span class="text-slate-500 font-medium">เงินเวรบ่ายดึก:</span>
+            <span id="statSlot2Pay" class="font-black text-purple-700 text-sm">0.00 บาท</span>
+          </div>
+        </div>
+
+        <!-- 4. Extra Shift Total -->
+        <div class="bg-amber-50/80 border-2 border-amber-300 rounded-xl p-3.5 space-y-1.5 shadow-2xs">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-amber-950 flex items-center gap-1">⚡ เงินกะเกินรวม</span>
+            <span class="text-[10px] text-amber-700 font-semibold">(วันหยุด + บ่ายดึก)</span>
+          </div>
+          <div class="text-[11px] text-amber-800">
+            รวมค่าเวรผลัด/กะพิเศษทั้งหมด
+          </div>
+          <div class="pt-2 border-t border-amber-200 flex items-center justify-between">
+            <span class="text-amber-900 font-bold">รวมเงินกะเกิน:</span>
+            <span id="statExtraShiftPay" class="font-black text-amber-700 text-base">0.00 บาท</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grand Total Summary Banner -->
+      <div class="bg-white border-2 border-emerald-400 rounded-xl p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
+          <div class="p-2.5 rounded-lg bg-blue-50/70 border border-blue-200">
+            <div class="text-[11px] text-blue-800 font-bold">ส่วนที่ 1: เงินค่าล่วงเวลา (OT)</div>
+            <div id="bannerOtPay" class="text-lg md:text-xl font-black text-blue-700">0.00 บาท</div>
+            <div class="text-[10px] text-slate-500">คิดจากชั่วโมง OT เกินเวลาทำการปกติ</div>
+          </div>
+          <div class="p-2.5 rounded-lg bg-amber-50/70 border border-amber-200">
+            <div class="text-[11px] text-amber-900 font-bold">ส่วนที่ 2: เงินกะเกิน (วันหยุด + บ่ายดึก)</div>
+            <div id="bannerExtraPay" class="text-lg md:text-xl font-black text-amber-700">0.00 บาท</div>
+            <div class="text-[10px] text-slate-500">เวรเช้าวันหยุด (ส.-อา.+นักขัตฯ) + เวรบ่ายดึก</div>
+          </div>
+        </div>
+
+        <div class="md:border-l md:border-emerald-200 md:pl-5 text-left md:text-right flex flex-col justify-center">
+          <div class="text-xs font-bold text-emerald-900 uppercase tracking-wide">🎉 รวมเงินค่าตอบแทนสุทธิทั้งสิ้น</div>
+          <div id="statGrandTotalPay" class="text-2xl md:text-3xl font-black text-emerald-600">0.00 บาท</div>
+          <div class="text-[10px] text-slate-500">เงิน OT + เงินกะเกิน รวมทุกประเภท</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Detailed Summary Table -->
+    <section class="bg-white border border-slate-200 rounded-2xl p-4 md:p-5 shadow-sm print-shadow-none space-y-3">
+      <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+        📊 สรุปผลชั่วโมงเวรประจำเดือน
+      </h3>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs md:text-sm border-collapse">
+          <thead>
+            <tr class="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">
+              <th class="py-2.5 px-3 text-left">รายการสรุป</th>
+              <th class="py-2.5 px-3 text-center">ช่องที่นับ</th>
+              <th class="py-2.5 px-3 text-center">จำนวนเวร</th>
+              <th class="py-2.5 px-3 text-right">รวมชั่วโมง (ชม.)</th>
+            </tr>
+          </thead>
+          <tbody id="detailedSummaryTbody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Shift Master Table -->
+    <section class="bg-white border border-slate-200 rounded-2xl p-4 md:p-5 shadow-sm print-shadow-none space-y-3 no-print">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+        <div>
+          <h2 class="text-sm md:text-base font-bold text-slate-900 flex items-center gap-2">
+            ⚙️ ตารางเงื่อนไขเวร (Shift Master)
+          </h2>
+          <p class="text-xs text-slate-500">สามารถเพิ่ม แก้ไข หรือลบรหัสเวรตามหน่วยงานของท่านได้</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btnResetDefaultShifts" class="px-2.5 py-1.5 text-xs text-slate-500 hover:text-rose-600 hover:bg-slate-50 rounded-lg transition" title="รีเซ็ตกลับเป็นเวรมาตรฐานเดิม">
+            รีเซ็ตค่าเริ่มต้น
+          </button>
+          <button id="btnOpenAddModal" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition">
+            + เพิ่มเงื่อนไขเวร
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">
+              <th class="py-2 px-3">รหัสเวร</th>
+              <th class="py-2 px-3">ชื่อเวร / รายละเอียด</th>
+              <th class="py-2 px-3">หมวดหมู่</th>
+              <th class="py-2 px-3">เวลาเริ่ม - สิ้นสุด</th>
+              <th class="py-2 px-3">นับเป็นกี่ชั่วโมง</th>
+              <th class="py-2 px-3 text-center">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="shiftTableBody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="text-center text-xs text-slate-400 py-4 no-print">
+      ระบบคำนวณตารางชั่วโมงเวร • ใช้งานได้บนทุกอุปกรณ์ ไม่ต้องต่ออินเทอร์เน็ตเพื่อเก็บข้อมูล
+    </footer>
+
+  </div>
+
+  <!-- Modal for Add/Edit Shift -->
+  <div id="shiftModal" class="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden no-print">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-3">
+      <div class="flex items-center justify-between border-b pb-2">
+        <h3 id="modalTitle" class="text-sm font-bold text-slate-900">เพิ่มเงื่อนไขเวร</h3>
+        <button id="btnCloseModal" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+      </div>
+
+      <form id="shiftForm" class="space-y-3 text-xs">
+        <input type="hidden" id="editIndex" value="-1">
+
+        <div>
+          <label class="block font-semibold mb-1">รหัสเวร (เช่น ช, บ4, บ5, ด) <span class="text-rose-500">*</span></label>
+          <input type="text" id="mShiftKey" required maxlength="10" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none uppercase font-bold text-slate-800">
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1">ชื่อเวร / คำอธิบาย</label>
+          <input type="text" id="mShiftName" placeholder="เช่น เวรบ่าย 5 ชั่วโมง" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none text-slate-800">
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1">หมวดหมู่</label>
+          <select id="mShiftCat" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option value="บ่าย">บ่าย (Afternoon)</option>
+            <option value="ดึก">ดึก (Night)</option>
+            <option value="เช้า">เช้า (Morning)</option>
+            <option value="หยุด">วันหยุด (Off/Leave)</option>
+            <option value="อื่นๆ">อื่นๆ</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold mb-1">เวลาเริ่ม</label>
+            <input type="time" id="mStartTime" value="16:00" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-semibold mb-1">เวลาสิ้นสุด</label>
+            <input type="time" id="mEndTime" value="20:00" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold mb-1">นับเป็นชั่วโมง <span class="text-rose-500">*</span></label>
+            <input type="number" id="mHours" required step="0.25" min="0" value="4" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 font-bold text-blue-600 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-semibold mb-1">สีแท็ก</label>
+            <input type="color" id="mColor" value="#f59e0b" class="w-full h-8 rounded-lg border border-slate-300 cursor-pointer p-0.5">
+          </div>
+        </div>
+
+        <div class="pt-2 border-t flex justify-end gap-2">
+          <button type="button" id="btnCancelModal" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100">ยกเลิก</button>
+          <button type="submit" class="px-4 py-1.5 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-2xs">บันทึก</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal for Rate Settings -->
+  <div id="rateModal" class="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden no-print">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-3">
+      <div class="flex items-center justify-between border-b pb-2">
+        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+          <span>⚙️</span> ตั้งค่าอัตราเงินค่าตอบแทน
+        </h3>
+        <button id="btnCloseRateModal" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+      </div>
+
+      <form id="rateForm" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold mb-1">อัตราค่าล่วงเวลา OT (บาท / ชั่วโมง)</label>
+          <input type="number" id="inputRateOt" step="1" min="0" required class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold text-blue-600 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1">อัตราเวรเช้าวันหยุด ส.-อา.+นักขัตฯ (บาท / 8 ชม.)</label>
+          <input type="number" id="inputRateHoliday" step="1" min="0" required class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold text-rose-600 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1">อัตราเวรบ่าย/ดึก ช่อง 2 (บาท / 8 ชม.)</label>
+          <input type="number" id="inputRateSlot2" step="1" min="0" required class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold text-purple-600 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div class="pt-2 border-t flex justify-end gap-2">
+          <button type="button" id="btnResetRates" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100">ค่าเริ่มต้น</button>
+          <button type="submit" class="px-4 py-1.5 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-2xs">บันทึกอัตรา</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // ค่าตั้งต้นของเวร
+    const DEFAULT_SHIFTS = [
+      { key: "ช", name: "เวรเช้า (8 ชม.)", category: "เช้า", start: "08:00", end: "16:00", hours: 8, color: "#2563eb" },
+      { key: "ช4", name: "เวรเช้าสั้น (4 ชม.)", category: "เช้า", start: "08:00", end: "12:00", hours: 4, color: "#60a5fa" },
+      { key: "บ4", name: "เวรบ่าย 4 ชั่วโมง", category: "บ่าย", start: "16:00", end: "20:00", hours: 4, color: "#d97706" },
+      { key: "บ5", name: "เวรบ่าย 5 ชั่วโมง", category: "บ่าย", start: "16:00", end: "21:00", hours: 5, color: "#f59e0b" },
+      { key: "บ6", name: "เวรบ่าย 6 ชั่วโมง", category: "บ่าย", start: "16:00", end: "22:00", hours: 6, color: "#ea580c" },
+      { key: "บ7", name: "เวรบ่าย 7 ชั่วโมง", category: "บ่าย", start: "16:00", end: "23:00", hours: 7, color: "#c2410c" },
+      { key: "บ8", name: "เวรบ่าย 8 ชั่วโมง", category: "บ่าย", start: "16:00", end: "24:00", hours: 8, color: "#b45309" },
+      { key: "ด", name: "เวรดึก (8 ชม.)", category: "ดึก", start: "00:00", end: "08:00", hours: 8, color: "#7c3aed" },
+      { key: "ด4", name: "เวรดึกสั้น (4 ชม.)", category: "ดึก", start: "00:00", end: "04:00", hours: 4, color: "#a78bfa" },
+      { key: "O", name: "วันหยุด (Off)", category: "หยุด", start: "-", end: "-", hours: 0, color: "#64748b" },
+      { key: "ลา", name: "ลาพักผ่อน/ป่วย", category: "หยุด", start: "-", end: "-", hours: 0, color: "#94a3b8" }
+    ];
+
+    // ค่าตั้งต้นอัตราค่าตอบแทน
+    const DEFAULT_RATES = {
+      otRate: 175,       // บาท / ชม.
+      holidayRate: 250,  // บาท / 8 ชม.
+      slot2Rate: 300     // บาท / 8 ชม.
+    };
+
+    const THAI_MONTHS = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+
+    // App State
+    let shiftList = [...DEFAULT_SHIFTS];
+    let payRates = { ...DEFAULT_RATES };
+    let curMonth = new Date().getMonth();
+    let curYear = new Date().getFullYear();
+    let monthlyData = {};
+    let holidaysData = {};
+    let currentTargetSlot = "slot1";
+    let selectedPaletteKey = null;
+
+    function formatTime(val) {
+      if (!val || val === "-" || val === "null" || val === "undefined") return "-";
+      const str = String(val).trim();
+      const match = str.match(/(?:^|\s|T)?(\d{1,2}):(\d{2})/);
+      if (match) {
+        return `${match[1].padStart(2, "0")}:${match[2]}`;
+      }
+      return str;
+    }
+
+    function getKey(y, m) { return `${y}-${String(m + 1).padStart(2, '0')}`; }
+
+    function loadState() {
+      try {
+        const sShifts = localStorage.getItem("standalone_shifts_v1");
+        if (sShifts) shiftList = JSON.parse(sShifts);
+
+        const sRates = localStorage.getItem("standalone_rates_v1");
+        if (sRates) payRates = { ...DEFAULT_RATES, ...JSON.parse(sRates) };
+
+        const sRoster = localStorage.getItem("standalone_roster_v1");
+        if (sRoster) monthlyData = JSON.parse(sRoster);
+
+        const sHolidays = localStorage.getItem("standalone_holidays_v1");
+        if (sHolidays) holidaysData = JSON.parse(sHolidays);
+      } catch(e) {
+        console.error("Error reading localStorage:", e);
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem("standalone_shifts_v1", JSON.stringify(shiftList));
+        localStorage.setItem("standalone_rates_v1", JSON.stringify(payRates));
+        localStorage.setItem("standalone_roster_v1", JSON.stringify(monthlyData));
+        localStorage.setItem("standalone_holidays_v1", JSON.stringify(holidaysData));
+      } catch(e) {
+        console.error("Error writing localStorage:", e);
+      }
+    }
+
+    function init() {
+      loadState();
+
+      // Setup Year Select
+      const yrSel = document.getElementById("yearSelect");
+      const baseYear = new Date().getFullYear();
+      for (let y = baseYear - 3; y <= baseYear + 4; y++) {
+        const opt = document.createElement("option");
+        opt.value = y;
+        opt.textContent = `${y} (พ.ศ. ${y + 543})`;
+        if (y === curYear) opt.selected = true;
+        yrSel.appendChild(opt);
+      }
+
+      document.getElementById("monthSelect").value = curMonth;
+
+      setupSlotButtons();
+      setupHolidayInput();
+      setupImportExport();
+      setupRatesModal();
+
+      renderRates();
+      renderShifts();
+      renderCalendar();
+    }
+
+    function setupSlotButtons() {
+      const btn1 = document.getElementById("btnTargetSlot1");
+      const btn2 = document.getElementById("btnTargetSlot2");
+
+      btn1.onclick = () => {
+        currentTargetSlot = "slot1";
+        btn1.className = "px-2.5 py-1 rounded-md bg-blue-600 text-white font-bold shadow-2xs transition";
+        btn2.className = "px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 font-medium transition";
+      };
+
+      btn2.onclick = () => {
+        currentTargetSlot = "slot2";
+        btn2.className = "px-2.5 py-1 rounded-md bg-purple-600 text-white font-bold shadow-2xs transition";
+        btn1.className = "px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 font-medium transition";
+      };
+    }
+
+    function setupHolidayInput() {
+      const input = document.getElementById("holidayDateInput");
+      const btnApply = document.getElementById("btnApplyHolidays");
+      const btnClear = document.getElementById("btnClearHolidays");
+
+      const applyHolidaysFromInput = () => {
+        const text = input.value.trim();
+        const skey = getKey(curYear, curMonth);
+        const totalDays = new Date(curYear, curMonth + 1, 0).getDate();
+
+        if (!text) {
+          holidaysData[skey] = [];
+        } else {
+          const nums = text.split(/[\s,]+/)
+            .map(t => parseInt(t.trim(), 10))
+            .filter(n => !isNaN(n) && n >= 1 && n <= totalDays);
+          
+          holidaysData[skey] = [...new Set(nums)].sort((a, b) => a - b);
+        }
+
+        saveState();
+        renderCalendar();
+      };
+
+      btnApply.onclick = applyHolidaysFromInput;
+      input.onkeydown = (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          applyHolidaysFromInput();
+        }
+      };
+
+      btnClear.onclick = () => {
+        input.value = "";
+        applyHolidaysFromInput();
+      };
+    }
+
+    function toggleHolidayDay(day) {
+      const skey = getKey(curYear, curMonth);
+      if (!holidaysData[skey]) holidaysData[skey] = [];
+      const idx = holidaysData[skey].indexOf(day);
+      if (idx !== -1) {
+        holidaysData[skey].splice(idx, 1);
+      } else {
+        holidaysData[skey].push(day);
+        holidaysData[skey].sort((a, b) => a - b);
+      }
+      saveState();
+      renderCalendar();
+    }
+
+    function removeHoliday(day) {
+      const skey = getKey(curYear, curMonth);
+      if (!holidaysData[skey]) return;
+      holidaysData[skey] = holidaysData[skey].filter(d => d !== day);
+      saveState();
+      renderCalendar();
+    }
+
+    function renderShifts() {
+      const tbody = document.getElementById("shiftTableBody");
+      tbody.innerHTML = "";
+      shiftList.forEach((s, idx) => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50";
+
+        const startDisp = formatTime(s.start);
+        const endDisp = formatTime(s.end);
+        const timeDisplay = (startDisp === "-" && endDisp === "-") ? "-" : `${startDisp} - ${endDisp}`;
+
+        tr.innerHTML = `
+          <td class="py-2 px-3">
+            <span class="px-2 py-0.5 rounded text-white font-bold text-xs shadow-2xs" style="background-color: ${s.color}">${s.key}</span>
+          </td>
+          <td class="py-2 px-3 font-medium text-slate-800">${s.name}</td>
+          <td class="py-2 px-3 text-slate-500">${s.category || "-"}</td>
+          <td class="py-2 px-3 font-mono font-medium text-slate-700">${timeDisplay}</td>
+          <td class="py-2 px-3 font-bold text-blue-600">${s.hours} ชม.</td>
+          <td class="py-2 px-3 text-center space-x-1.5">
+            <button onclick="editShift(${idx})" class="text-xs text-blue-600 hover:underline font-semibold">แก้</button>
+            <button onclick="delShift(${idx})" class="text-xs text-rose-600 hover:underline font-semibold">ลบ</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      renderPalette();
+    }
+
+    function renderPalette() {
+      const container = document.getElementById("paletteContainer");
+      container.innerHTML = "";
+
+      const clearBtn = document.createElement("button");
+      clearBtn.className = `px-2 py-0.5 rounded border border-slate-300 text-xs ${selectedPaletteKey === "" ? "ring-2 ring-slate-800 font-bold" : "text-slate-600"}`;
+      clearBtn.textContent = "ว่าง";
+      clearBtn.onclick = () => { selectedPaletteKey = ""; renderPalette(); };
+      container.appendChild(clearBtn);
+
+      shiftList.forEach(s => {
+        const btn = document.createElement("button");
+        const active = selectedPaletteKey === s.key;
+        btn.className = `px-2 py-0.5 rounded text-white text-xs font-bold transition ${active ? "ring-2 ring-offset-1 ring-slate-800 scale-105" : "opacity-90 hover:opacity-100"}`;
+        btn.style.backgroundColor = s.color;
+        btn.textContent = `${s.key} (${s.hours}h)`;
+        btn.onclick = () => { selectedPaletteKey = active ? null : s.key; renderPalette(); };
+        container.appendChild(btn);
+      });
+    }
+
+    function renderCalendar() {
+      const grid = document.getElementById("calendarGrid");
+      grid.innerHTML = "";
+
+      const totalDays = new Date(curYear, curMonth + 1, 0).getDate();
+      const firstDay = new Date(curYear, curMonth, 1).getDay();
+      const skey = getKey(curYear, curMonth);
+      const curRoster = monthlyData[skey] || {};
+      const curHolidays = holidaysData[skey] || [];
+
+      document.getElementById("monthYearTitle").textContent = `${THAI_MONTHS[curMonth]} ${curYear + 543}`;
+
+      // Update Holiday Input & Tags
+      const holidayInput = document.getElementById("holidayDateInput");
+      if (document.activeElement !== holidayInput) {
+        holidayInput.value = curHolidays.join(", ");
+      }
+
+      const tagsContainer = document.getElementById("holidayTagsContainer");
+      const noHolidaysText = document.getElementById("noHolidaysText");
+      
+      tagsContainer.innerHTML = `<span class="text-[11px] text-slate-500 font-medium">วันหยุดนักขัตฤกษ์ที่เลือก (${curHolidays.length} วัน):</span>`;
+      
+      if (curHolidays.length === 0) {
+        tagsContainer.appendChild(noHolidaysText);
+        noHolidaysText.classList.remove("hidden");
+      } else {
+        curHolidays.forEach(day => {
+          const tag = document.createElement("span");
+          tag.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-100 border border-rose-300 text-rose-800 text-[11px] font-bold shadow-2xs";
+          tag.innerHTML = `🚩 วันที่ ${day} <button type="button" class="text-rose-500 hover:text-rose-700 ml-0.5" title="ลบวันหยุดนี้">✕</button>`;
+          tag.querySelector("button").onclick = () => removeHoliday(day);
+          tagsContainer.appendChild(tag);
+        });
+      }
+
+      // Empty lead days
+      for (let i = 0; i < firstDay; i++) {
+        const empty = document.createElement("div");
+        empty.className = "min-h-[85px] rounded-xl border border-dashed border-slate-200 bg-slate-50/50";
+        grid.appendChild(empty);
+      }
+
+      // Render Day Cells
+      for (let day = 1; day <= totalDays; day++) {
+        const dateObj = new Date(curYear, curMonth, day);
+        const dayOfWeek = dateObj.getDay();
+        const isSunday = dayOfWeek === 0;
+        const isSaturday = dayOfWeek === 6;
+        const isHoliday = curHolidays.indexOf(day) !== -1;
+
+        const dayObj = curRoster[day] || { slot1: "", slot2: "" };
+        const s1 = shiftList.find(s => s.key === dayObj.slot1);
+        const s2 = shiftList.find(s => s.key === dayObj.slot2);
+
+        const h1 = s1 ? s1.hours : 0;
+        const h2 = s2 ? s2.hours : 0;
+        const dayTotal = h1 + h2;
+
+        const cell = document.createElement("div");
+        
+        let bgClass = "bg-white border-slate-200";
+        if (isHoliday) {
+          bgClass = "bg-amber-50/90 border-amber-300 ring-2 ring-amber-400/80 shadow-xs";
+        } else if (isSunday) {
+          bgClass = "bg-rose-50/60 border-rose-200";
+        } else if (isSaturday) {
+          bgClass = "bg-indigo-50/60 border-indigo-200";
+        }
+
+        cell.className = `min-h-[90px] p-2 rounded-xl border ${bgClass} hover:border-blue-400 hover:shadow-xs flex flex-col justify-between transition relative`;
+
+        // Cell Header
+        const header = document.createElement("div");
+        header.className = "flex items-center justify-between text-xs";
+
+        const dayBadge = document.createElement("div");
+        dayBadge.className = "flex items-center gap-1";
+        
+        const dayNumberSpan = document.createElement("span");
+        dayNumberSpan.className = `font-extrabold text-sm ${isSunday ? "text-rose-600" : isSaturday ? "text-indigo-600" : "text-slate-800"}`;
+        dayNumberSpan.textContent = day;
+        dayBadge.appendChild(dayNumberSpan);
+
+        // Clickable Flag for Quick Toggle Holiday
+        const holToggleBtn = document.createElement("button");
+        holToggleBtn.type = "button";
+        holToggleBtn.title = isHoliday ? "คลิกเพื่อยกเลิกวันหยุดนักขัตฯ" : "คลิกเพื่อตั้งเป็นวันหยุดนักขัตฯ";
+        holToggleBtn.className = `text-[10px] px-1 py-0.2 rounded transition cursor-pointer ${isHoliday ? "bg-rose-600 text-white font-bold" : "text-slate-300 hover:text-rose-500"}`;
+        holToggleBtn.textContent = "🚩";
+        holToggleBtn.onclick = (e) => {
+          e.stopPropagation();
+          toggleHolidayDay(day);
+        };
+        dayBadge.appendChild(holToggleBtn);
+
+        header.appendChild(dayBadge);
+
+        if (dayTotal > 0) {
+          const hoursTag = document.createElement("span");
+          hoursTag.className = "text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200";
+          hoursTag.textContent = `${dayTotal}h`;
+          header.appendChild(hoursTag);
+        }
+        cell.appendChild(header);
+
+        // Slots Box
+        const slotsBox = document.createElement("div");
+        slotsBox.className = "space-y-1.5 my-1.5";
+
+        // Slot 1 (เวรช่วงเช้า)
+        const slot1Btn = document.createElement("div");
+        slot1Btn.className = "flex items-center justify-between px-2 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition select-none";
+        if (s1) {
+          slot1Btn.style.backgroundColor = s1.color;
+          slot1Btn.className += " text-white shadow-2xs";
+          slot1Btn.innerHTML = `<span>ช่อง 1: ${s1.key}</span> <span>${s1.hours}h</span>`;
+        } else {
+          slot1Btn.className += " bg-white/80 text-slate-400 border border-dashed border-slate-300 hover:border-blue-400 hover:text-slate-600";
+          slot1Btn.innerHTML = `<span>ช่อง 1 (เช้า): -</span>`;
+        }
+        slot1Btn.onclick = () => {
+          if (selectedPaletteKey !== null) setSlot(day, "slot1", selectedPaletteKey);
+          else cycleSlot(day, "slot1");
+        };
+        slotsBox.appendChild(slot1Btn);
+
+        // Slot 2 (เวรช่วงบ่าย/ดึก)
+        const slot2Btn = document.createElement("div");
+        slot2Btn.className = "flex items-center justify-between px-2 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition select-none";
+        if (s2) {
+          slot2Btn.style.backgroundColor = s2.color;
+          slot2Btn.className += " text-white shadow-2xs";
+          slot2Btn.innerHTML = `<span>ช่อง 2: ${s2.key}</span> <span>${s2.hours}h</span>`;
+        } else {
+          slot2Btn.className += " bg-white/80 text-slate-400 border border-dashed border-purple-200 hover:border-purple-400 hover:text-slate-600";
+          slot2Btn.innerHTML = `<span>ช่อง 2 (บ่าย/ดึก): -</span>`;
+        }
+        slot2Btn.onclick = () => {
+          if (selectedPaletteKey !== null) setSlot(day, "slot2", selectedPaletteKey);
+          else cycleSlot(day, "slot2");
+        };
+        slotsBox.appendChild(slot2Btn);
+
+        cell.appendChild(slotsBox);
+        grid.appendChild(cell);
+      }
+
+      updateAnalytics();
+    }
+
+    function setSlot(day, slotName, sKey) {
+      const skey = getKey(curYear, curMonth);
+      if (!monthlyData[skey]) monthlyData[skey] = {};
+      if (!monthlyData[skey][day]) monthlyData[skey][day] = { slot1: "", slot2: "" };
+      monthlyData[skey][day][slotName] = sKey || "";
+      saveState();
+      renderCalendar();
+    }
+
+    function cycleSlot(day, slotName) {
+      const skey = getKey(curYear, curMonth);
+      if (!monthlyData[skey]) monthlyData[skey] = {};
+      if (!monthlyData[skey][day]) monthlyData[skey][day] = { slot1: "", slot2: "" };
+
+      const curVal = monthlyData[skey][day][slotName];
+      const curIdx = shiftList.findIndex(s => s.key === curVal);
+      let nextKey = "";
+      if (curIdx === -1) nextKey = shiftList[0].key;
+      else if (curIdx < shiftList.length - 1) nextKey = shiftList[curIdx + 1].key;
+      else nextKey = "";
+
+      monthlyData[skey][day][slotName] = nextKey;
+      saveState();
+      renderCalendar();
+    }
+
+    function updateAnalytics() {
+      const skey = getKey(curYear, curMonth);
+      const roster = monthlyData[skey] || {};
+      const holidays = holidaysData[skey] || [];
+      const totalDays = new Date(curYear, curMonth + 1, 0).getDate();
+
+      let totalHours = 0;
+      
+      let holidayMorningHours = 0;  // เช้านักขัตฯ (ช่อง 1)
+      let holidayMorningCount = 0;
+      let weekendMorningHours = 0;  // เช้า ส.-อา. (ช่อง 1 ที่ไม่ใช่นักขัตฯ)
+      let weekendMorningCount = 0;
+      let weekdayMorningHours = 0;  // เช้า จ.-ศ. ปกติ (ช่อง 1)
+      let weekdayMorningCount = 0;
+
+      let slot2TotalHours = 0;      // รวมชั่วโมงช่อง 2 ทั้งหมด
+      let slot2TotalCount = 0;
+      let b4Count = 0, b5Count = 0, b6Count = 0, b7Count = 0, b8Count = 0;
+      let nightHours = 0, nightCount = 0;
+
+      for (let d = 1; d <= totalDays; d++) {
+        const dateObj = new Date(curYear, curMonth, d);
+        const dayOfWeek = dateObj.getDay();
+        const isSunday = dayOfWeek === 0;
+        const isSaturday = dayOfWeek === 6;
+        const isWeekend = isSunday || isSaturday;
+        const isHoliday = holidays.indexOf(d) !== -1;
+
+        const dayObj = roster[d] || {};
+
+        // 1. จัดการช่อง 1 (เวรเช้า)
+        const k1 = dayObj.slot1;
+        if (k1) {
+          const s1 = shiftList.find(x => x.key === k1);
+          const h1 = s1 ? s1.hours : 0;
+          totalHours += h1;
+
+          if (isHoliday) {
+            holidayMorningHours += h1;
+            holidayMorningCount++;
+          } else if (isWeekend) {
+            weekendMorningHours += h1;
+            weekendMorningCount++;
+          } else {
+            weekdayMorningHours += h1;
+            weekdayMorningCount++;
+          }
+        }
+
+        // 2. จัดการช่อง 2 (เวรบ่าย/ดึก)
+        const k2 = dayObj.slot2;
+        if (k2) {
+          const s2 = shiftList.find(x => x.key === k2);
+          const h2 = s2 ? s2.hours : 0;
+          totalHours += h2;
+          slot2TotalHours += h2;
+          slot2TotalCount++;
+
+          if (k2 === "บ4") b4Count++;
+          else if (k2 === "บ5") b5Count++;
+          else if (k2 === "บ6") b6Count++;
+          else if (k2 === "บ7") b7Count++;
+          else if (k2 === "บ8") b8Count++;
+
+          if (k2.startsWith("ด") || (s2 && s2.category === "ดึก")) {
+            nightHours += h2;
+            nightCount++;
+          }
+        }
+      }
+
+      // Key Metrics
+      const totalMorningHolidayHours = holidayMorningHours + weekendMorningHours;
+      const totalMorningHolidayCount = holidayMorningCount + weekendMorningCount;
+
+      document.getElementById("statTotalHours").textContent = `${totalHours.toFixed(1)} ชม.`;
+      document.getElementById("statHolidayMorningHours").textContent = `${totalMorningHolidayHours.toFixed(1)} ชม.`;
+      
+      const badgeWeekend = document.getElementById("badgeWeekendHours");
+      if (badgeWeekend) {
+        badgeWeekend.textContent = `ส.-อา.: ${weekendMorningHours.toFixed(1)} ชม. (${weekendMorningCount} เวร)`;
+      }
+      const badgeHoliday = document.getElementById("badgeHolidayHours");
+      if (badgeHoliday) {
+        badgeHoliday.textContent = `นักขัตฯ: ${holidayMorningHours.toFixed(1)} ชม. (${holidayMorningCount} เวร)`;
+      }
+
+      document.getElementById("statSlot2Hours").textContent = `${slot2TotalHours.toFixed(1)} ชม.`;
+      document.getElementById("statWeekdayMorningHours").textContent = `${weekdayMorningHours.toFixed(1)} ชม.`;
+      document.getElementById("statHolidayCount").textContent = holidays.length;
+
+      // Specific Afternoon & Night
+      document.getElementById("hoursB4").textContent = `${b4Count * 4} ชม.`;
+      document.getElementById("countB4").textContent = `${b4Count} เวร`;
+
+      document.getElementById("hoursB5").textContent = `${b5Count * 5} ชม.`;
+      document.getElementById("countB5").textContent = `${b5Count} เวร`;
+
+      document.getElementById("hoursB6").textContent = `${b6Count * 6} ชม.`;
+      document.getElementById("countB6").textContent = `${b6Count} เวร`;
+
+      document.getElementById("hoursB7").textContent = `${b7Count * 7} ชม.`;
+      document.getElementById("countB7").textContent = `${b7Count} เวร`;
+
+      document.getElementById("hoursNight").textContent = `${nightHours.toFixed(1)} ชม.`;
+      document.getElementById("countNight").textContent = `${nightCount} เวร`;
+
+      // 3. คำนวณเงินค่าเวร & ค่าล่วงเวลา
+      const workingHoursInput = document.getElementById("officialWorkingHoursInput");
+      let officialHours = 160;
+      if (workingHoursInput) {
+        officialHours = parseFloat(workingHoursInput.value);
+        if (isNaN(officialHours) || officialHours < 0) officialHours = 0;
+      }
+
+      // OT: (เวรรวม - เวลาทำการ) × otRate
+      const otHours = Math.max(0, totalHours - officialHours);
+      const otPay = otHours * (payRates.otRate || 175);
+
+      // เวรเช้าวันหยุด: (ชม. ÷ 8) × holidayRate
+      const holidayMorningPay = (totalMorningHolidayHours / 8) * (payRates.holidayRate || 250);
+
+      // เวรบ่าย/ดึก (ช่อง 2): (ชม. ÷ 8) × slot2Rate
+      const slot2Pay = (slot2TotalHours / 8) * (payRates.slot2Rate || 300);
+
+      // เงินกะเกินรวม
+      const extraShiftPay = holidayMorningPay + slot2Pay;
+
+      // รวมสุทธิ
+      const grandTotalPay = otPay + extraShiftPay;
+
+      // Update UI Money Cards
+      const elOtHours = document.getElementById("statOtHours");
+      if (elOtHours) elOtHours.textContent = `${otHours.toFixed(1)} ชม.`;
+
+      const elOtPay = document.getElementById("statOtPay");
+      if (elOtPay) elOtPay.textContent = `${otPay.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท`;
+
+      const elBannerOtPay = document.getElementById("bannerOtPay");
+      if (elBannerOtPay) elBannerOtPay.textContent = `${otPay.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท`;
+
+      const elHolPayHours = document.getElementById("statHolidayMorningPayHours");
+      if (elHolPayHours) elHolPayHours.textContent = `${totalMorningHolidayHours.toFixed(1)} ชม.`;
+
+      const elHolPayShifts = document.getElementById("statHolidayMorningPayShifts");
+      if (elHolPayShifts) elHolPayShifts.textContent = `${(totalMorningHolidayHours / 8).toFixed(1)} กะ`;
+
+      const elHolidayPay = document.getElementById("statHolidayPay");
+      if (elHolidayPay) elHolidayPay.textContent = `${holidayMorningPay.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท`;
+
+      const elSlot2PayHours = document.getElementById("statSlot2PayHours");
+      if (elSlot2PayHours) elSlot2PayHours.textContent = `${slot2TotalHours.toFixed(1)} ชม.`;
+
+      const elSlot2PayShifts = document.getElementById("statSlot2PayShifts");
+      if (elSlot2PayShifts) elSlot2PayShifts.textContent = `${(slot2TotalHours / 8).toFixed(1)} กะ`;
+
+      const elSlot2Pay = document.getElementById("statSlot2Pay");
+      if (elSlot2Pay) elSlot2Pay.textContent = `${slot2Pay.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท`;
+
+      const elExtraShiftPay = document.getElementById("statExtraShiftPay");
+      if (elExtraShiftPay) elExtraShiftPay.textContent = `${extraShiftPay.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท`;
+
+      const elBannerExtraPay = document.getElementById("bannerExtraPay");
+      if (elBannerExtraPay) elBannerExtraPay.textContent = `${extraShiftPay.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท`;
+
+      const elGrandTotalPay = document.getElementById("statGrandTotalPay");
+      if (elGrandTotalPay) elGrandTotalPay.textContent = `${grandTotalPay.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท`;
+
+      // Render Detailed Summary Table
+      const detailedTbody = document.getElementById("detailedSummaryTbody");
+
+      detailedTbody.innerHTML = `
+        <tr class="bg-blue-50/60 font-bold text-blue-950">
+          <td class="py-2.5 px-3">1. รวมชั่วโมงทำงานทั้งเดือน</td>
+          <td class="py-2.5 px-3 text-center text-slate-500">ทุกช่อง</td>
+          <td class="py-2.5 px-3 text-center">${holidayMorningCount + weekendMorningCount + weekdayMorningCount + slot2TotalCount} เวร</td>
+          <td class="py-2.5 px-3 text-right text-blue-600 font-black text-base">${totalHours.toFixed(1)} ชม.</td>
+        </tr>
+        <tr class="bg-rose-100/80 font-extrabold border-t-2 border-rose-300 text-rose-950">
+          <td class="py-2.5 px-3">⭐ 2. รวมชั่วโมงเวรเช้าวันหยุดทั้งหมด (ส.-อา. + นักขัตฤกษ์)</td>
+          <td class="py-2.5 px-3 text-center text-rose-900 font-bold">ช่อง 1 (เช้า)</td>
+          <td class="py-2.5 px-3 text-center text-rose-950 font-black">${totalMorningHolidayCount} เวร</td>
+          <td class="py-2.5 px-3 text-right text-rose-800 text-base font-black">${totalMorningHolidayHours.toFixed(1)} ชม.</td>
+        </tr>
+        <tr class="text-slate-700 bg-indigo-50/40 font-medium">
+          <td class="py-2 px-3 pl-8 text-indigo-950">↳ เวรเช้าวันเสาร์-อาทิตย์ (ช่อง 1)</td>
+          <td class="py-2 px-3 text-center text-indigo-800">ช่อง 1 (เช้า)</td>
+          <td class="py-2 px-3 text-center font-bold text-indigo-900">${weekendMorningCount} เวร</td>
+          <td class="py-2 px-3 text-right font-bold text-indigo-700">${weekendMorningHours.toFixed(1)} ชม.</td>
+        </tr>
+        <tr class="text-slate-700 bg-rose-50/40 font-medium border-b border-rose-200">
+          <td class="py-2 px-3 pl-8 text-rose-950">↳ เวรเช้าวันหยุดนักขัตฤกษ์ (ช่อง 1)</td>
+          <td class="py-2 px-3 text-center text-rose-800">ช่อง 1 (เช้า)</td>
+          <td class="py-2 px-3 text-center font-bold text-rose-900">${holidayMorningCount} เวร</td>
+          <td class="py-2 px-3 text-right font-bold text-rose-700">${holidayMorningHours.toFixed(1)} ชม.</td>
+        </tr>
+        <tr class="bg-purple-50/60 font-bold border-b border-purple-200 text-purple-950">
+          <td class="py-2.5 px-3">🌙 3. รวมชั่วโมง (เวรบ่าย + เวรดึก) ที่ช่อง 2 ทั้งหมด</td>
+          <td class="py-2.5 px-3 text-center text-purple-700 font-bold">ช่อง 2 ทั้งหมด</td>
+          <td class="py-2.5 px-3 text-center text-purple-800">${slot2TotalCount} เวร</td>
+          <td class="py-2.5 px-3 text-right text-purple-700 text-base font-black">${slot2TotalHours.toFixed(1)} ชม.</td>
+        </tr>
+        <tr class="text-slate-600">
+          <td class="py-1.5 px-3 pl-8">↳ เวรบ่าย 4 ชั่วโมง (บ4) ช่อง 2</td>
+          <td class="py-1.5 px-3 text-center">ช่อง 2</td>
+          <td class="py-1.5 px-3 text-center">${b4Count} เวร</td>
+          <td class="py-1.5 px-3 text-right font-medium">${b4Count * 4} ชม.</td>
+        </tr>
+        <tr class="text-slate-600">
+          <td class="py-1.5 px-3 pl-8">↳ เวรบ่าย 5 ชั่วโมง (บ5) ช่อง 2</td>
+          <td class="py-1.5 px-3 text-center">ช่อง 2</td>
+          <td class="py-1.5 px-3 text-center">${b5Count} เวร</td>
+          <td class="py-1.5 px-3 text-right font-medium">${b5Count * 5} ชม.</td>
+        </tr>
+        <tr class="text-slate-600">
+          <td class="py-1.5 px-3 pl-8">↳ เวรบ่าย 6 ชั่วโมง (บ6) ช่อง 2</td>
+          <td class="py-1.5 px-3 text-center">ช่อง 2</td>
+          <td class="py-1.5 px-3 text-center">${b6Count} เวร</td>
+          <td class="py-1.5 px-3 text-right font-medium">${b6Count * 6} ชม.</td>
+        </tr>
+        <tr class="text-slate-600">
+          <td class="py-1.5 px-3 pl-8">↳ เวรบ่าย 7 ชั่วโมง (บ7) ช่อง 2</td>
+          <td class="py-1.5 px-3 text-center">ช่อง 2</td>
+          <td class="py-1.5 px-3 text-center">${b7Count} เวร</td>
+          <td class="py-1.5 px-3 text-right font-medium">${b7Count * 7} ชม.</td>
+        </tr>
+        <tr class="text-slate-600">
+          <td class="py-1.5 px-3 pl-8">↳ เวรบ่าย 8 ชั่วโมง (บ8) ช่อง 2</td>
+          <td class="py-1.5 px-3 text-center">ช่อง 2</td>
+          <td class="py-1.5 px-3 text-center">${b8Count} เวร</td>
+          <td class="py-1.5 px-3 text-right font-medium">${b8Count * 8} ชม.</td>
+        </tr>
+        <tr class="font-semibold text-slate-800">
+          <td class="py-2 px-3 pl-8">↳ รวมเวรดึก (ด / 8 ชม.) ช่อง 2</td>
+          <td class="py-2 px-3 text-center text-slate-500">ช่อง 2</td>
+          <td class="py-2 px-3 text-center">${nightCount} เวร</td>
+          <td class="py-2 px-3 text-right text-purple-600 font-bold">${nightHours.toFixed(1)} ชม.</td>
+        </tr>
+        <tr class="font-semibold text-slate-800 border-t border-slate-200">
+          <td class="py-2 px-3">4. รวมชั่วโมงเวรเช้าวันธรรมดา (จ.-ศ. เวลาราชการ)</td>
+          <td class="py-2 px-3 text-center text-slate-500">ช่อง 1 (เช้า)</td>
+          <td class="py-2 px-3 text-center">${weekdayMorningCount} เวร</td>
+          <td class="py-2 px-3 text-right text-emerald-600 font-bold">${weekdayMorningHours.toFixed(1)} ชม.</td>
+        </tr>
+        <tr class="text-slate-600 bg-slate-50/50">
+          <td class="py-2 px-3">5. จำนวนวันหยุดนักขัตฤกษ์ในเดือนนี้</td>
+          <td class="py-2 px-3 text-center text-slate-500">ตามที่ระบุ</td>
+          <td class="py-2 px-3 text-center font-bold text-rose-600">${holidays.length} วัน</td>
+          <td class="py-2 px-3 text-right text-slate-400">-</td>
+        </tr>
+
+        <!-- ส่วนคำนวณเงินค่าตอบแทน -->
+        <tr class="bg-emerald-100/90 font-black border-t-2 border-emerald-400 text-emerald-950">
+          <td colspan="4" class="py-2.5 px-3 text-sm">💰 6. การคำนวณเงินค่าตอบแทน & ค่าเวร (OT / กะเกิน)</td>
+        </tr>
+        <tr class="text-slate-700 bg-emerald-50/30">
+          <td class="py-1.5 px-3 pl-8">↳ เวลาทำการปกติของเดือนนี้</td>
+          <td class="py-1.5 px-3 text-center text-slate-500">เกณฑ์ปกติ</td>
+          <td class="py-1.5 px-3 text-center">-</td>
+          <td class="py-1.5 px-3 text-right font-medium text-slate-800">${officialHours} ชม.</td>
+        </tr>
+        <tr class="text-slate-700 bg-blue-50/30 font-semibold">
+          <td class="py-1.5 px-3 pl-8 text-blue-900">↳ จำนวนชั่วโมง OT (เวรรวม - เวลาทำการ)</td>
+          <td class="py-1.5 px-3 text-center text-blue-700">ล่วงเวลา</td>
+          <td class="py-1.5 px-3 text-center text-blue-800">${otHours.toFixed(1)} ชม.</td>
+          <td class="py-1.5 px-3 text-right font-bold text-blue-700">${otPay.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท</td>
+        </tr>
+        <tr class="text-slate-700 bg-rose-50/30 font-semibold">
+          <td class="py-1.5 px-3 pl-8 text-rose-900">↳ ค่าเวรเช้าวันหยุด ส.-อา. + นักขัตฯ (÷ 8 × ${payRates.holidayRate} บ.)</td>
+          <td class="py-1.5 px-3 text-center text-rose-700">ช่อง 1 (เช้า)</td>
+          <td class="py-1.5 px-3 text-center text-rose-800">${(totalMorningHolidayHours / 8).toFixed(1)} กะ</td>
+          <td class="py-1.5 px-3 text-right font-bold text-rose-700">${holidayMorningPay.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท</td>
+        </tr>
+        <tr class="text-slate-700 bg-purple-50/30 font-semibold">
+          <td class="py-1.5 px-3 pl-8 text-purple-900">↳ ค่าเวรบ่าย/ดึก (ช่อง 2) (÷ 8 × ${payRates.slot2Rate} บ.)</td>
+          <td class="py-1.5 px-3 text-center text-purple-700">ช่อง 2</td>
+          <td class="py-1.5 px-3 text-center text-purple-800">${(slot2TotalHours / 8).toFixed(1)} กะ</td>
+          <td class="py-1.5 px-3 text-right font-bold text-purple-700">${slot2Pay.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท</td>
+        </tr>
+        <tr class="bg-blue-100/70 font-bold text-blue-950">
+          <td class="py-2 px-3 pl-8">⭐ ส่วนที่ 1: รวมเงินค่าล่วงเวลา (OT)</td>
+          <td class="py-2 px-3 text-center text-blue-800">${payRates.otRate} บ./ชม.</td>
+          <td class="py-2 px-3 text-center">${otHours.toFixed(1)} ชม.</td>
+          <td class="py-2 px-3 text-right text-blue-700 font-black text-sm">${otPay.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท</td>
+        </tr>
+        <tr class="bg-amber-100/80 font-bold text-amber-950">
+          <td class="py-2 px-3 pl-8">⭐ ส่วนที่ 2: รวมเงินกะเกิน (เวรวันหยุด + เวรบ่ายดึก)</td>
+          <td class="py-2 px-3 text-center text-amber-800">เวรพิเศษ</td>
+          <td class="py-2 px-3 text-center">-</td>
+          <td class="py-2 px-3 text-right text-amber-800 font-black text-sm">${extraShiftPay.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท</td>
+        </tr>
+        <tr class="bg-emerald-600 text-white font-black text-sm md:text-base">
+          <td class="py-3 px-3">🎉 รวมเงินค่าตอบแทนสุทธิทั้งสิ้น (OT + กะเกิน)</td>
+          <td class="py-3 px-3 text-center text-emerald-100 text-xs">เงินรวมทั้งหมด</td>
+          <td class="py-3 px-3 text-center text-emerald-100 text-xs">-</td>
+          <td class="py-3 px-3 text-right text-white font-black text-base md:text-lg">${grandTotalPay.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท</td>
+        </tr>
+      `;
+    }
+
+    // Shift Master Modal logic
+    const modal = document.getElementById("shiftModal");
+    document.getElementById("btnOpenAddModal").onclick = () => {
+      document.getElementById("editIndex").value = -1;
+      document.getElementById("modalTitle").textContent = "เพิ่มเงื่อนไขเวรใหม่";
+      document.getElementById("shiftForm").reset();
+      modal.classList.remove("hidden");
+    };
+
+    document.getElementById("btnCloseModal").onclick = () => modal.classList.add("hidden");
+    document.getElementById("btnCancelModal").onclick = () => modal.classList.add("hidden");
+
+    window.editShift = function(idx) {
+      const s = shiftList[idx];
+      document.getElementById("editIndex").value = idx;
+      document.getElementById("modalTitle").textContent = "แก้ไขเงื่อนไขเวร";
+      document.getElementById("mShiftKey").value = s.key;
+      document.getElementById("mShiftName").value = s.name;
+      document.getElementById("mShiftCat").value = s.category || "บ่าย";
+
+      const startVal = formatTime(s.start);
+      const endVal = formatTime(s.end);
+      document.getElementById("mStartTime").value = startVal !== "-" ? startVal : "16:00";
+      document.getElementById("mEndTime").value = endVal !== "-" ? endVal : "20:00";
+
+      document.getElementById("mHours").value = s.hours;
+      document.getElementById("mColor").value = s.color;
+      modal.classList.remove("hidden");
+    };
+
+    window.delShift = function(idx) {
+      if (confirm(`ต้องการลบเวร "${shiftList[idx].key}" หรือไม่?`)) {
+        shiftList.splice(idx, 1);
+        saveState();
+        renderShifts();
+        renderCalendar();
+      }
+    };
+
+    document.getElementById("shiftForm").onsubmit = (e) => {
+      e.preventDefault();
+      const idx = parseInt(document.getElementById("editIndex").value, 10);
+      const key = document.getElementById("mShiftKey").value.trim().toUpperCase();
+      const name = document.getElementById("mShiftName").value.trim();
+      const category = document.getElementById("mShiftCat").value;
+      const start = formatTime(document.getElementById("mStartTime").value);
+      const end = formatTime(document.getElementById("mEndTime").value);
+      const hours = parseFloat(document.getElementById("mHours").value) || 0;
+      const color = document.getElementById("mColor").value;
+
+      const obj = { key, name, category, start, end, hours, color };
+      if (idx >= 0) shiftList[idx] = obj; else shiftList.push(obj);
+
+      saveState();
+      modal.classList.add("hidden");
+      renderShifts();
+      renderCalendar();
+    };
+
+    document.getElementById("btnResetDefaultShifts").onclick = () => {
+      if (confirm("ต้องการรีเซ็ตเงื่อนไขเวรทั้งหมดกลับเป็นค่าเริ่มต้นหรือไม่?")) {
+        shiftList = JSON.parse(JSON.stringify(DEFAULT_SHIFTS));
+        saveState();
+        renderShifts();
+        renderCalendar();
+      }
+    };
+
+    // Rates Modal logic
+    function renderRates() {
+      document.getElementById("rateLabelOt").textContent = payRates.otRate;
+      document.getElementById("rateLabelHol").textContent = payRates.holidayRate;
+      document.getElementById("rateLabelSlot2").textContent = payRates.slot2Rate;
+      
+      document.querySelectorAll(".rateValOt").forEach(el => el.textContent = payRates.otRate);
+      document.querySelectorAll(".rateValHol").forEach(el => el.textContent = payRates.holidayRate);
+      document.querySelectorAll(".rateValSlot2").forEach(el => el.textContent = payRates.slot2Rate);
+    }
+
+    function setupRatesModal() {
+      const rateModal = document.getElementById("rateModal");
+      const btnOpen = document.getElementById("btnOpenRatesModal");
+      const btnClose = document.getElementById("btnCloseRateModal");
+      const form = document.getElementById("rateForm");
+      const btnReset = document.getElementById("btnResetRates");
+
+      btnOpen.onclick = () => {
+        document.getElementById("inputRateOt").value = payRates.otRate;
+        document.getElementById("inputRateHoliday").value = payRates.holidayRate;
+        document.getElementById("inputRateSlot2").value = payRates.slot2Rate;
+        rateModal.classList.remove("hidden");
+      };
+
+      btnClose.onclick = () => rateModal.classList.add("hidden");
+
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        payRates.otRate = parseFloat(document.getElementById("inputRateOt").value) || 0;
+        payRates.holidayRate = parseFloat(document.getElementById("inputRateHoliday").value) || 0;
+        payRates.slot2Rate = parseFloat(document.getElementById("inputRateSlot2").value) || 0;
+
+        saveState();
+        renderRates();
+        updateAnalytics();
+        rateModal.classList.add("hidden");
+      };
+
+      btnReset.onclick = () => {
+        if (confirm("ต้องการรีเซ็ตอัตราเงินค่าตอบแทนกลับเป็นค่ามาตรฐานหรือไม่?")) {
+          payRates = { ...DEFAULT_RATES };
+          saveState();
+          renderRates();
+          updateAnalytics();
+          rateModal.classList.add("hidden");
+        }
+      };
+    }
+
+    function setupImportExport() {
+      // Backup Dropdown toggle
+      const btnToggleBackup = document.getElementById("btnToggleBackupMenu");
+      const backupMenu = document.getElementById("backupMenu");
+
+      btnToggleBackup.onclick = (e) => {
+        e.stopPropagation();
+        backupMenu.classList.toggle("hidden");
+      };
+
+      document.addEventListener("click", () => {
+        if (!backupMenu.classList.contains("hidden")) backupMenu.classList.add("hidden");
+      });
+
+      // Auto working hours button
+      const inputWorkHours = document.getElementById("officialWorkingHoursInput");
+      if (inputWorkHours) {
+        inputWorkHours.oninput = () => updateAnalytics();
+      }
+
+      const btnAutoWorkHours = document.getElementById("btnAutoCalcWorkingHours");
+      if (btnAutoWorkHours) {
+        btnAutoWorkHours.onclick = () => {
+          const totalDays = new Date(curYear, curMonth + 1, 0).getDate();
+          const skey = getKey(curYear, curMonth);
+          const holidays = holidaysData[skey] || [];
+          let workDays = 0;
+          for (let d = 1; d <= totalDays; d++) {
+            const dateObj = new Date(curYear, curMonth, d);
+            const dow = dateObj.getDay();
+            if (dow !== 0 && dow !== 6 && holidays.indexOf(d) === -1) {
+              workDays++;
+            }
+          }
+          if (inputWorkHours) {
+            inputWorkHours.value = workDays * 8;
+            updateAnalytics();
+          }
+        };
+      }
+
+      // Quick Paste Handler
+      document.getElementById("btnTogglePaste").onclick = () => document.getElementById("pasteDrawer").classList.toggle("hidden");
+      document.getElementById("btnClosePaste").onclick = () => document.getElementById("pasteDrawer").classList.add("hidden");
+
+      document.getElementById("btnApplyPaste").onclick = () => {
+        const text = document.getElementById("pasteTextarea").value.trim();
+        if (!text) return;
+
+        const totalDays = new Date(curYear, curMonth + 1, 0).getDate();
+        const skey = getKey(curYear, curMonth);
+        if (!monthlyData[skey]) monthlyData[skey] = {};
+
+        const dayEntries = text.split(/[\n,]+/).map(t => t.trim()).filter(Boolean);
+
+        dayEntries.forEach((entry, idx) => {
+          const day = idx + 1;
+          if (day <= totalDays) {
+            const parts = entry.split(/\s+/).filter(Boolean);
+            if (!monthlyData[skey][day]) monthlyData[skey][day] = { slot1: "", slot2: "" };
+
+            if (parts.length >= 2) {
+              monthlyData[skey][day].slot1 = parts[0].toUpperCase() === "-" ? "" : parts[0].toUpperCase();
+              monthlyData[skey][day].slot2 = parts[1].toUpperCase() === "-" ? "" : parts[1].toUpperCase();
+            } else if (parts.length === 1) {
+              monthlyData[skey][day][currentTargetSlot] = parts[0].toUpperCase() === "-" ? "" : parts[0].toUpperCase();
+            }
+          }
+        });
+
+        saveState();
+        renderCalendar();
+        document.getElementById("pasteDrawer").classList.add("hidden");
+        alert(`✓ นำเข้าข้อมูลเวร ${Math.min(dayEntries.length, totalDays)} วัน เรียบร้อยแล้ว!`);
+      };
+
+      // 1. Export JSON Backup
+      document.getElementById("btnExportJson").onclick = () => {
+        const backupData = {
+          version: "1.0",
+          exportDate: new Date().toISOString(),
+          shiftList,
+          payRates,
+          monthlyData,
+          holidaysData
+        };
+        const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `backup_shift_data_${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+      };
+
+      // 2. Import JSON Backup
+      const jsonFileInput = document.getElementById("jsonFileInput");
+      document.getElementById("btnImportJson").onclick = () => jsonFileInput.click();
+
+      jsonFileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          try {
+            const data = JSON.parse(evt.target.result);
+            if (data.shiftList && Array.isArray(data.shiftList)) shiftList = data.shiftList;
+            if (data.payRates) payRates = { ...DEFAULT_RATES, ...data.payRates };
+            if (data.monthlyData) monthlyData = data.monthlyData;
+            if (data.holidaysData) holidaysData = data.holidaysData;
+
+            saveState();
+            renderRates();
+            renderShifts();
+            renderCalendar();
+            alert("✓ นำเข้าไฟล์สำรองข้อมูล (JSON) สำเร็จเรียบร้อยแล้ว!");
+          } catch(err) {
+            alert("ไฟล์ JSON ไม่ถูกต้อง: " + err.message);
+          }
+          jsonFileInput.value = "";
+        };
+        reader.readAsText(file, "UTF-8");
+      };
+
+      // 3. Export CSV
+      document.getElementById("btnExportCsv").onclick = () => {
+        const skey = getKey(curYear, curMonth);
+        const roster = monthlyData[skey] || {};
+        const holidays = holidaysData[skey] || [];
+        const totalDays = new Date(curYear, curMonth + 1, 0).getDate();
+
+        let csv = "\uFEFFวันที่,วัน,วันหยุดนักขัตฯ,ช่อง 1 (เวรเช้า),ชม.เช้า,ช่อง 2 (เวรบ่าย/ดึก),ชม.บ่าย/ดึก,รวมชั่วโมง/วัน\n";
+        for (let d = 1; d <= totalDays; d++) {
+          const dateObj = new Date(curYear, curMonth, d);
+          const dayName = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"][dateObj.getDay()];
+          const isHol = holidays.indexOf(d) !== -1 ? "ใช่" : "ไม่ใช่";
+          const obj = roster[d] || { slot1: "", slot2: "" };
+          const s1 = shiftList.find(x => x.key === obj.slot1);
+          const s2 = shiftList.find(x => x.key === obj.slot2);
+          const h1 = s1 ? s1.hours : 0;
+          const h2 = s2 ? s2.hours : 0;
+          csv += `${d},"${dayName}","${isHol}","${obj.slot1 || ""}",${h1},"${obj.slot2 || ""}",${h2},${h1 + h2}\n`;
+        }
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `ตารางเวร_${THAI_MONTHS[curMonth]}_${curYear + 543}.csv`;
+        a.click();
+      };
+
+      // 4. Import CSV
+      const csvFileInput = document.getElementById("csvFileInput");
+      document.getElementById("btnImportCsv").onclick = () => csvFileInput.click();
+
+      csvFileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          parseCsvContent(evt.target.result);
+          csvFileInput.value = "";
+        };
+        reader.readAsText(file, "UTF-8");
+      };
+    }
+
+    function parseCsvContent(csvText) {
+      const lines = csvText.split(/\r?\n/).filter(line => line.trim());
+      if (lines.length <= 1) return;
+
+      const skey = getKey(curYear, curMonth);
+      if (!monthlyData[skey]) monthlyData[skey] = {};
+      holidaysData[skey] = [];
+
+      let importedCount = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const row = lines[i].split(",").map(c => c.replace(/^"|"$/g, "").trim());
+        const day = parseInt(row[0], 10);
+        if (!isNaN(day) && day >= 1 && day <= 31) {
+          const isHol = row[2] === "ใช่" || row[2] === "true" || row[2] === "TRUE" || row[2] === "1";
+          const s1 = row[3] || "";
+          const s2 = row[5] || "";
+
+          monthlyData[skey][day] = { slot1: s1, slot2: s2 };
+          if (isHol && holidaysData[skey].indexOf(day) === -1) {
+            holidaysData[skey].push(day);
+          }
+          importedCount++;
+        }
+      }
+
+      saveState();
+      renderCalendar();
+      alert(`✓ นำเข้าข้อมูลจากไฟล์ CSV ${importedCount} วัน เรียบร้อยแล้ว!`);
+    }
+
+    document.getElementById("btnClearMonth").onclick = () => {
+      if (confirm(`ต้องการล้างเวรเดือน ${THAI_MONTHS[curMonth]} ทั้งหมดหรือไม่?`)) {
+        const skey = getKey(curYear, curMonth);
+        delete monthlyData[skey];
+        saveState();
+        renderCalendar();
+      }
+    };
+
+    document.getElementById("monthSelect").onchange = (e) => {
+      curMonth = parseInt(e.target.value, 10);
+      renderCalendar();
+    };
+
+    document.getElementById("yearSelect").onchange = (e) => {
+      curYear = parseInt(e.target.value, 10);
+      renderCalendar();
+    };
+
+    window.onload = init;
+  </script>
+</body>
+</html>
